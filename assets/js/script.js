@@ -21,10 +21,25 @@ async function getWeather(event) {
     coordinates.lon +
     "&units=imperial" +
     apiKey;
-  savedSearches.push(formInput.value);
+  if (savedSearches.includes(formInput.value)===false) {
+    savedSearches.push(formInput.value);
   localStorage.setItem("city", JSON.stringify(savedSearches));
-  postHistory();
+  postHistory();}
   var result = fetch(requestUrl)
+    .then(function (response) {
+      return response.json();
+    })
+    .then(function (data) {
+      convertUnixTimetoMDY(data);
+      displayWeather(data);
+      displayForecast(data);
+      console.log(data);
+    });
+  return await result;
+}
+
+async function getPriorSearch(priorUrl) {
+  var result = fetch(priorUrl)
     .then(function (response) {
       return response.json();
     })
@@ -97,6 +112,10 @@ function displayWeather(data) {
   uvElInner.textContent = data.current.uvi;
   uvEl.appendChild(uvElInner);
   currentWeather.appendChild(uvEl);
+  currentWeather.classList.add("border")
+  currentWeather.classList.add("border-dark")
+
+  formInput.value = "";
 }
 
 function displayForecast(data) {
@@ -139,6 +158,7 @@ function init() {
     var createButton = document.createElement("button");
     createButton.setAttribute("type", "button");
     createButton.setAttribute("value", element);
+    createButton.setAttribute("id", "historyButton");
     createButton.classList = "btn btn-secondary";
     createButton.textContent = element;
     searchHistory.appendChild(createButton);
@@ -158,5 +178,11 @@ function postHistory() {
 }
 
 searchButton.addEventListener("click", getWeather);
-historyButton.addEventListener("click", getWeather);
+document.addEventListener("click", function (event) {
+  if (event.target.id === "historyButton") {
+    formInput.value = event.target.value;
+    searchButton.click();
+  }
+});
+
 init();
