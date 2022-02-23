@@ -4,12 +4,14 @@ var currentWeather = document.getElementById("cityWeather");
 var forecast = document.getElementById("weatherForecast");
 var searchHistory = document.getElementById("previousSearch");
 var historyButton = document.getElementById("historyButton");
+var alertContainer = document.getElementById("alert-container");
 var baseUrl = "https://api.openweathermap.org/data/2.5/";
 var apiKey = "&appid=048d713b5084654290dd97fa018259c9";
 var imagebaseUrl = "http://openweathermap.org/img/wn/";
 var savedSearches = JSON.parse(localStorage.getItem("city")) || [];
 var currentSearch = savedSearches.length;
 
+// waits for getcoordinates to resolve and then gets data from other api and calls populating functions.
 async function getWeather(event) {
   event.preventDefault();
   var coordinates = await getCoordinates(formInput.value);
@@ -21,10 +23,11 @@ async function getWeather(event) {
     coordinates.lon +
     "&units=imperial" +
     apiKey;
-  if (savedSearches.includes(formInput.value)===false) {
+  if (savedSearches.includes(formInput.value) === false) {
     savedSearches.push(formInput.value);
-  localStorage.setItem("city", JSON.stringify(savedSearches));
-  postHistory();}
+    localStorage.setItem("city", JSON.stringify(savedSearches));
+    postHistory();
+  }
   var result = fetch(requestUrl)
     .then(function (response) {
       return response.json();
@@ -38,25 +41,19 @@ async function getWeather(event) {
   return await result;
 }
 
-async function getPriorSearch(priorUrl) {
-  var result = fetch(priorUrl)
-    .then(function (response) {
-      return response.json();
-    })
-    .then(function (data) {
-      convertUnixTimetoMDY(data);
-      displayWeather(data);
-      displayForecast(data);
-      console.log(data);
-    });
-  return await result;
-}
-
+// uses user input to get lat and lon coordinates. sends error if issue.
 async function getCoordinates(cityName) {
   var requestUrl = baseUrl + "weather?q=" + cityName + apiKey;
   var result = fetch(requestUrl)
     .then(function (response) {
-      return response.json();
+      if (response.ok) {
+        return response.json();
+      } else {
+        throw new Error("An error has occured. Please try again");
+      }
+    })
+    .catch(function (error) {
+      populateAlertError(error);
     })
     .then(function (data) {
       return data.coord;
@@ -64,6 +61,7 @@ async function getCoordinates(cityName) {
   return result;
 }
 
+// converts time to m/d/y format
 function convertUnixTimetoMDY(unixTime) {
   var unixTimeConvert = new Date(unixTime * 1000);
   var year = unixTimeConvert.getFullYear();
@@ -72,9 +70,11 @@ function convertUnixTimetoMDY(unixTime) {
   return month + "/" + date + "/" + year;
 }
 
+// dynamically displays current weather. clears old data
 function displayWeather(data) {
   currentWeather.innerHTML = "";
   forecast.innerHTML = "";
+  clearAlert();
   var dateEl = document.createElement("h2");
   dateEl.textContent =
     formInput.value + " " + convertUnixTimetoMDY(data.current.dt);
@@ -112,12 +112,13 @@ function displayWeather(data) {
   uvElInner.textContent = data.current.uvi;
   uvEl.appendChild(uvElInner);
   currentWeather.appendChild(uvEl);
-  currentWeather.classList.add("border")
-  currentWeather.classList.add("border-dark")
+  currentWeather.classList.add("border");
+  currentWeather.classList.add("border-dark");
 
   formInput.value = "";
 }
 
+// dynamically displays 5 day forecast
 function displayForecast(data) {
   var forecastHeading = document.createElement("h2");
   forecastHeading.textContent = "5 Day Forecast:";
@@ -152,6 +153,7 @@ function displayForecast(data) {
   }
 }
 
+// loads search history on page load
 function init() {
   for (var i = 0; i < savedSearches.length; i++) {
     var element = savedSearches[i];
@@ -159,7 +161,7 @@ function init() {
     createButton.setAttribute("type", "button");
     createButton.setAttribute("value", element);
     createButton.setAttribute("id", "historyButton");
-    createButton.classList = "btn btn-secondary";
+    createButton.classList = "btn btn-secondary w-100 my-1";
     createButton.textContent = element;
     searchHistory.appendChild(createButton);
   }
@@ -171,12 +173,26 @@ function postHistory() {
   createButton.setAttribute("type", "button");
   createButton.setAttribute("value", element);
   createButton.setAttribute("id", "historyButton");
-  createButton.classList = "btn btn-secondary";
+  createButton.classList = "btn btn-secondary w-100 my-1";
   createButton.textContent = element;
   searchHistory.appendChild(createButton);
   currentSearch++;
 }
 
+// populates error message if issue
+function populateAlertError(errorMessage) {
+  clearAlert();
+  alertContainer.textContent = errorMessage;
+  alertContainer.classList = "alert alert-danger";
+}
+
+// clears error message
+function clearAlert() {
+  alertContainer.textContent = "";
+  alertContainer.classList = "";
+}
+
+// event listeners on button clicks. starts functions
 searchButton.addEventListener("click", getWeather);
 document.addEventListener("click", function (event) {
   if (event.target.id === "historyButton") {
